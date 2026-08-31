@@ -1,0 +1,9 @@
+[package]
+name = "conversor-rs"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+eframe = "0.36.1"
+reqwest = { version = "0.13.4", features = ["blocking", "json"] }
+serde = { version = "1.0.229", features = ["derive"] }
