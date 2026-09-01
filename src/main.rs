@@ -78,6 +78,7 @@ impl eframe::App for CurrencyConverter {
         egui::CentralPanel::default().show(ui, |ui| {
             ui.vertical_centered(|ui| {
                 ui.heading("Currency Converter");
+                let base_rate = if self.ars_to_usd { "ARS" } else { "USD" };
 
                 if let Some(exchange_rate) = &self.exchange_rate {
                     ui.label(format!(
@@ -99,7 +100,7 @@ impl eframe::App for CurrencyConverter {
 
                 ui.add_space(10.0);
 
-                ui.label("Amount:");
+                ui.label(format!("Amount in {}:", base_rate));
 
                 ui.text_edit_singleline(&mut self.amount);
 
@@ -111,9 +112,12 @@ impl eframe::App for CurrencyConverter {
 
                 ui.add_space(10.0);
 
+                ui.separator();
+
                 if !self.result.is_empty() {
-                    ui.separator();
                     ui.heading(&self.result);
+                } else {
+                    ui.heading("Enter a value to start");
                 }
             })
         });
@@ -125,8 +129,8 @@ fn main() -> eframe::Result<()> {
 
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_inner_size([360.0, 260.0])
-            .with_min_inner_size([320.0, 220.0]),
+            .with_inner_size([400.0, 260.0])
+            .with_min_inner_size([350.0, 250.0]),
         ..Default::default()
     };
 
