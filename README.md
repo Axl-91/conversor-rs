@@ -1,21 +1,43 @@
 # Conversor-rs
 
-A small desktop currency converter written in Rust using `eframe` and `egui`.
-
-The application retrieves the current USD to ARS exchange rate when it starts and allows conversions between Argentine pesos and US dollars.
-
-## Features
-
-- Convert ARS to USD.
-- Convert USD to ARS.
-- Fetch the exchange rate from an external API on startup.
-- Display the exchange rate date.
-- Accept decimal values using either `.` or `,`.
-- Format results with two decimal places.
-
+A small desktop currency converter written in Rust with `eframe` and `egui`. It downloads live USD→ARS and USD→EUR rates from the [Frankfurter](https://frankfurter.dev) API at startup, stores them relative to USD, and uses them to convert between Argentine pesos, US dollars and euros in either direction. The interface has currency drop-downs, a swap button, a close button, and color-coded results.
 
 ## Requirements
 
-- Rust
-- Cargo
-- An active Internet connection when starting the application
+- Rust (edition 2024) and Cargo
+- An internet connection when the application starts, to download the exchange rates
+
+## Build and run
+
+```sh
+cargo build --release
+cargo run --release
+```
+
+The executable is placed in `target/release/conversor-rs` (`conversor-rs.exe` on Windows).
+
+## Usage
+
+Choose the source and target currencies, type an amount and press Enter or click Convert. The two-arrow button swaps the currencies and the ✖ button in the header closes the app. Both `.` and `,` work as decimal separators. Results are shown with two decimal places in the card at the bottom of the window.
+
+## How it works
+
+At startup the app requests `GET https://api.frankfurter.dev/v2/rate/USD/ARS` and `GET https://api.frankfurter.dev/v2/rate/USD/EUR`. Both rates are stored as units of currency per 1 USD (USD itself is stored as 1.0), so any pair can be converted with `amount / rate(from) * rate(to)`. Rates are fetched once, so restart the app to refresh them. If the API cannot be reached, the app still opens but shows an error and disables conversions.
+
+## Project structure
+
+- `src/main.rs` — entry point and module declarations
+- `src/api.rs` — exchange-rate API client and rate snapshot
+- `src/currency.rs` — supported currencies and conversion math, with unit tests
+- `src/app.rs` — application state and conversion workflow
+- `src/ui.rs` — interface drawing and user actions
+- `src/theme.rs` — shared color palette
+
+Each module has one purpose: `api` is the only one that touches the network, `currency` has no network or UI code so it is easy to test, `app` owns the state, `ui` only draws widgets, and `theme` centralizes the colors.
+
+## Tests and documentation
+
+```sh
+cargo test
+cargo doc --no-deps --open
+```

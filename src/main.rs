@@ -1,142 +1,56 @@
+//! # Conversor-rs
+//!
+//! A small but polished desktop currency converter built with `eframe` and
+//! `egui`. On startup it fetches live exchange rates from the
+//! [Frankfurter](https://frankfurter.dev) API and lets the user convert
+//! between three currencies:
+//!
+//! - **ARS** — Argentine peso
+//! - **USD** — US dollar
+//! - **EUR** — Euro
+//!
+//! ## Module layout
+//!
+//! - [`api`] fetches and stores the exchange rates.
+//! - [`currency`] defines the supported currencies and the conversion math.
+//! - [`app`] holds the application state and the `eframe::App` implementation.
+//! - [`ui`] draws the interface and reports user actions.
+//! - [`theme`] centralizes the color palette used by the UI.
+//!
+//! ## Running
+//!
+//! ```sh
+//! cargo run --release
+//! ```
+//!
+//! An internet connection is required when the application starts in order to
+//! retrieve the exchange rates.
+
+mod api;
+mod app;
+mod currency;
+mod theme;
+mod ui;
+
+use api::ExchangeRates;
+use app::CurrencyConverter;
 use eframe::egui;
-use serde::Deserialize;
-
-#[derive(Debug, Deserialize)]
-struct ExchangeRate {
-    date: String,
-    base: String,
-    quote: String,
-    rate: f64,
-}
-
-fn get_exchange_rate() -> Result<ExchangeRate, Box<dyn std::error::Error>> {
-    let url = "https://api.frankfurter.dev/v2/rate/USD/ARS";
-
-    let response = reqwest::blocking::get(url)?
-        .error_for_status()?
-        .json::<ExchangeRate>()?;
-
-    Ok(response)
-}
-
-struct CurrencyConverter {
-    exchange_rate: Option<ExchangeRate>,
-    amount: String,
-    result: String,
-    ars_to_usd: bool,
-}
-
-impl CurrencyConverter {
-    fn new(exchange_rate: Result<ExchangeRate, Box<dyn std::error::Error>>) -> Self {
-        match exchange_rate {
-            Ok(rate) => Self {
-                exchange_rate: Some(rate),
-                amount: String::new(),
-                result: String::new(),
-                ars_to_usd: true,
-            },
-
-            Err(error) => Self {
-                exchange_rate: None,
-                amount: String::new(),
-                result: format!("Could not get exchange rate: {error}"),
-                ars_to_usd: true,
-            },
-        }
-    }
-
-    fn convert(&mut self) {
-        let Some(exchange_rate) = &self.exchange_rate else {
-            self.result = "Exchange rate is not available.".to_string();
-            return;
-        };
-
-        let amount = match self.amount.trim().replace(',', ".").parse::<f64>() {
-            Ok(value) => value,
-            Err(_) => {
-                self.result = "Please enter a valid number.".to_string();
-                return;
-            }
-        };
-
-        let converted_amount = if self.ars_to_usd {
-            amount / exchange_rate.rate
-        } else {
-            amount * exchange_rate.rate
-        };
-
-        self.result = if self.ars_to_usd {
-            format!("{:.2} ARS = {:.2} USD", amount, converted_amount)
-        } else {
-            format!("{:.2} USD = {:.2} ARS", amount, converted_amount)
-        };
-    }
-}
-
-impl eframe::App for CurrencyConverter {
-    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
-        egui::CentralPanel::default().show(ui, |ui| {
-            ui.vertical_centered(|ui| {
-                ui.heading("Currency Converter");
-                let base_rate = if self.ars_to_usd { "ARS" } else { "USD" };
-
-                if let Some(exchange_rate) = &self.exchange_rate {
-                    ui.label(format!(
-                        "Rate from {}\n1 {} = {:.2} {}",
-                        exchange_rate.date,
-                        exchange_rate.base,
-                        exchange_rate.rate,
-                        exchange_rate.quote
-                    ));
-                } else {
-                    ui.colored_label(egui::Color32::RED, "Exchange rate unavailable");
-                }
-
-                ui.add_space(15.0);
-
-                ui.radio_value(&mut self.ars_to_usd, true, "ARS to USD");
-
-                ui.radio_value(&mut self.ars_to_usd, false, "USD to ARS");
-
-                ui.add_space(10.0);
-
-                ui.label(format!("Amount in {}:", base_rate));
-
-                ui.text_edit_singleline(&mut self.amount);
-
-                ui.add_space(10.0);
-
-                if ui.button("Convert").clicked() {
-                    self.convert();
-                }
-
-                ui.add_space(10.0);
-
-                ui.separator();
-
-                if !self.result.is_empty() {
-                    ui.heading(&self.result);
-                } else {
-                    ui.heading("Enter a value to start");
-                }
-            })
-        });
-    }
-}
 
 fn main() -> eframe::Result<()> {
-    let exchange_rate = get_exchange_rate();
+    // Fetch the rates once, before the window opens, and hand them to the app.
+    let exchange_rates = ExchangeRates::fetch();
 
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_inner_size([400.0, 260.0])
-            .with_min_inner_size([350.0, 250.0]),
+            .with_inner_size([440.0, 430.0])
+            .with_min_inner_size([400.0, 390.0])
+            .with_close_button(true),
         ..Default::default()
     };
 
     eframe::run_native(
         "Currency Converter",
         options,
-        Box::new(|_creation_context| Ok(Box::new(CurrencyConverter::new(exchange_rate)))),
+        Box::new(|_creation_context| Ok(Box::new(CurrencyConverter::new(exchange_rates)))),
     )
 }
